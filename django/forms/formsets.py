@@ -1,4 +1,10 @@
+<<<<<<< HEAD
 from django.core.exceptions import ValidationError
+=======
+from __future__ import unicode_literals
+
+from django.core.exceptions import ValidationError, ImproperlyConfigured
+>>>>>>> 5b864baf0cc06db43d00bc13dd018000537c8914
 from django.forms import Form
 from django.forms.fields import BooleanField, IntegerField
 from django.forms.utils import ErrorList
@@ -8,7 +14,9 @@ from django.utils.html import html_safe
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext as _, ngettext
 
-__all__ = ('BaseFormSet', 'formset_factory', 'all_valid')
+import warnings
+
+__all__ = ('BaseFormSet', 'FormSet', 'formset_factory', 'all_valid')
 
 # special field names
 TOTAL_FORM_COUNT = 'TOTAL_FORMS'
@@ -43,10 +51,21 @@ class ManagementForm(Form):
 
 
 @html_safe
+<<<<<<< HEAD
 class BaseFormSet:
+=======
+@python_2_unicode_compatible
+class FormSet(object):
+>>>>>>> 5b864baf0cc06db43d00bc13dd018000537c8914
     """
     A collection of instances of the same Form class.
     """
+    form = None
+    extra = 1
+    can_order = False
+    can_delete = False
+    max_num = None
+
     def __init__(self, data=None, files=None, auto_id='id_%s', prefix=None,
                  initial=None, error_class=ErrorList, form_kwargs=None):
         self.is_bound = data is not None or files is not None
@@ -59,6 +78,13 @@ class BaseFormSet:
         self.error_class = error_class
         self._errors = None
         self._non_form_errors = None
+        # check declaration of FormSet
+        if self.form is None:
+            raise ImproperlyConfigured("FormSet declaration does not contain "
+                "'form' value.")
+
+        # construct the forms in the formset
+        self._construct_forms()
 
     def __str__(self):
         return self.as_table()
@@ -409,6 +435,11 @@ class BaseFormSet:
         "Return this formset rendered as HTML <li>s."
         forms = ' '.join(form.as_ul() for form in self)
         return mark_safe('\n'.join([str(self.management_form), forms]))
+
+
+class BaseFormSet(FormSet):
+    warnings.warn("BaseFormSet has been renamed to FormSet.",
+        PendingDeprecationWarning)
 
 
 def formset_factory(form, formset=BaseFormSet, extra=1, can_order=False,

@@ -6,7 +6,7 @@ from django.forms import (
     BaseForm, CharField, DateField, FileField, Form, IntegerField,
     SplitDateTimeField, ValidationError, formsets,
 )
-from django.forms.formsets import BaseFormSet, formset_factory
+from django.forms.formsets import FormSet, formset_factory
 from django.forms.utils import ErrorList
 from django.test import SimpleTestCase
 
@@ -25,7 +25,7 @@ class FavoriteDrinkForm(Form):
     name = CharField()
 
 
-class BaseFavoriteDrinksFormSet(BaseFormSet):
+class BaseFavoriteDrinksFormSet(FormSet):
     def clean(self):
         seen_drinks = []
 
@@ -36,7 +36,7 @@ class BaseFavoriteDrinksFormSet(BaseFormSet):
             seen_drinks.append(drink['name'])
 
 
-class EmptyFsetWontValidate(BaseFormSet):
+class EmptyFsetWontValidate(FormSet):
     def clean(self):
         raise ValidationError("Clean method called")
 
@@ -130,8 +130,8 @@ class FormsFormsetTestCase(SimpleTestCase):
         Custom kwargs set on the formset instance are passed to the
         underlying forms.
         """
-        FormSet = formset_factory(CustomKwargForm, extra=2)
-        formset = FormSet(form_kwargs={'custom_kwarg': 1})
+        formset = formset_factory(CustomKwargForm, extra=2)
+        formset = formset(form_kwargs={'custom_kwarg': 1})
         for form in formset:
             self.assertTrue(hasattr(form, 'custom_kwarg'))
             self.assertEqual(form.custom_kwarg, 1)
@@ -140,18 +140,18 @@ class FormsFormsetTestCase(SimpleTestCase):
         """
         Form kwargs can be passed dynamically in a formset.
         """
-        class DynamicBaseFormSet(BaseFormSet):
+        class DynamicBaseFormSet(FormSet):
             def get_form_kwargs(self, index):
                 return {'custom_kwarg': index}
 
-        DynamicFormSet = formset_factory(CustomKwargForm, formset=DynamicBaseFormSet, extra=2)
-        formset = DynamicFormSet(form_kwargs={'custom_kwarg': 'ignored'})
+        dynamicformset = formset_factory(CustomKwargForm, formset=DynamicBaseFormSet, extra=2)
+        formset = dynamicformset(form_kwargs={'custom_kwarg': 'ignored'})
         for i, form in enumerate(formset):
             self.assertTrue(hasattr(form, 'custom_kwarg'))
             self.assertEqual(form.custom_kwarg, i)
 
     def test_form_kwargs_empty_form(self):
-        FormSet = formset_factory(CustomKwargForm)
+        formset = formset_factory(CustomKwargForm)
         formset = FormSet(form_kwargs={'custom_kwarg': 1})
         self.assertTrue(hasattr(formset.empty_form, 'custom_kwarg'))
         self.assertEqual(formset.empty_form.custom_kwarg, 1)
@@ -255,9 +255,9 @@ class FormsFormsetTestCase(SimpleTestCase):
         # Displaying more than 1 blank form ###########################################
         # We can also display more than 1 empty form at a time. To do so, pass a
         # extra argument to formset_factory.
-        ChoiceFormSet = formset_factory(Choice, extra=3)
+        choiceformset = formset_factory(Choice, extra=3)
 
-        formset = ChoiceFormSet(auto_id=False, prefix='choices')
+        formset = choiceformset(auto_id=False, prefix='choices')
         form_output = []
 
         for form in formset.forms:
@@ -297,9 +297,9 @@ class FormsFormsetTestCase(SimpleTestCase):
     def test_min_num_displaying_more_than_one_blank_form(self):
         # We can also display more than 1 empty form passing min_num argument
         # to formset_factory. It will (essentially) increment the extra argument
-        ChoiceFormSet = formset_factory(Choice, extra=1, min_num=1)
+        choiceformset = formset_factory(Choice, extra=1, min_num=1)
 
-        formset = ChoiceFormSet(auto_id=False, prefix='choices')
+        formset = choiceformset(auto_id=False, prefix='choices')
         form_output = []
 
         for form in formset.forms:
@@ -319,9 +319,9 @@ class FormsFormsetTestCase(SimpleTestCase):
 
     def test_min_num_displaying_more_than_one_blank_form_with_zero_extra(self):
         # We can also display more than 1 empty form passing min_num argument
-        ChoiceFormSet = formset_factory(Choice, extra=0, min_num=3)
+        choiceformset = formset_factory(Choice, extra=0, min_num=3)
 
-        formset = ChoiceFormSet(auto_id=False, prefix='choices')
+        formset = choiceformset(auto_id=False, prefix='choices')
         form_output = []
 
         for form in formset.forms:
@@ -353,8 +353,8 @@ class FormsFormsetTestCase(SimpleTestCase):
             'choices-2-votes': '',
         }
 
-        ChoiceFormSet = formset_factory(Choice, extra=3)
-        formset = ChoiceFormSet(data, auto_id=False, prefix='choices')
+        choiceformset = formset_factory(Choice, extra=3)
+        formset = choiceformset(data, auto_id=False, prefix='choices')
         self.assertTrue(formset.is_valid())
         self.assertEqual([form.cleaned_data for form in formset.forms], [{'votes': 100, 'choice': 'Calexico'}, {}, {}])
 
@@ -375,8 +375,8 @@ class FormsFormsetTestCase(SimpleTestCase):
             'choices-1-votes': '1',
         }
 
-        ChoiceFormSet = formset_factory(Choice, extra=1, max_num=1, validate_max=True)
-        formset = ChoiceFormSet(data, auto_id=False, prefix='choices')
+        choiceformset = formset_factory(Choice, extra=1, max_num=1, validate_max=True)
+        formset = choiceformset(data, auto_id=False, prefix='choices')
         self.assertFalse(formset.is_valid())
         self.assertEqual(formset.non_form_errors(), ['Please submit 1 or fewer forms.'])
 
@@ -397,8 +397,8 @@ class FormsFormsetTestCase(SimpleTestCase):
             'choices-1-votes': '1',
         }
 
-        ChoiceFormSet = formset_factory(Choice, extra=1, min_num=3, validate_min=True)
-        formset = ChoiceFormSet(data, auto_id=False, prefix='choices')
+        choiceformset = formset_factory(Choice, extra=1, min_num=3, validate_min=True)
+        formset = choiceformset(data, auto_id=False, prefix='choices')
         self.assertFalse(formset.is_valid())
         self.assertEqual(formset.non_form_errors(), ['Please submit 3 or more forms.'])
 
@@ -429,8 +429,8 @@ class FormsFormsetTestCase(SimpleTestCase):
             'choices-2-votes': '',
         }
 
-        ChoiceFormSet = formset_factory(Choice, extra=3)
-        formset = ChoiceFormSet(data, auto_id=False, prefix='choices')
+        choiceformset = formset_factory(Choice, extra=3)
+        formset = choiceformset(data, auto_id=False, prefix='choices')
         self.assertFalse(formset.is_valid())
         self.assertEqual(formset.errors, [{}, {'votes': ['This field is required.']}, {}])
 
@@ -438,8 +438,8 @@ class FormsFormsetTestCase(SimpleTestCase):
         # The extra argument also works when the formset is pre-filled with initial
         # data.
         initial = [{'choice': 'Calexico', 'votes': 100}]
-        ChoiceFormSet = formset_factory(Choice, extra=3)
-        formset = ChoiceFormSet(initial=initial, auto_id=False, prefix='choices')
+        choiceformset = formset_factory(Choice, extra=3)
+        formset = choiceformset(initial=initial, auto_id=False, prefix='choices')
         form_output = []
 
         for form in formset.forms:
@@ -472,10 +472,10 @@ class FormsFormsetTestCase(SimpleTestCase):
         # formset_factory. This will add a boolean field to each form instance. When
         # that boolean field is True, the form will be in formset.deleted_forms
 
-        ChoiceFormSet = formset_factory(Choice, can_delete=True)
+        choiceformset = formset_factory(Choice, can_delete=True)
 
         initial = [{'choice': 'Calexico', 'votes': 100}, {'choice': 'Fergie', 'votes': 900}]
-        formset = ChoiceFormSet(initial=initial, auto_id=False, prefix='choices')
+        formset = choiceformset(initial=initial, auto_id=False, prefix='choices')
         form_output = []
 
         for form in formset.forms:
@@ -547,13 +547,13 @@ class FormsFormsetTestCase(SimpleTestCase):
             'check-2-field': '',
             'check-2-DELETE': '',
         }
-        CheckFormSet = formset_factory(CheckForm, can_delete=True)
-        formset = CheckFormSet(data, prefix='check')
+        checkformset = formset_factory(CheckForm, can_delete=True)
+        formset = checkformset(data, prefix='check')
         self.assertTrue(formset.is_valid())
 
         # If we remove the deletion flag now we will have our validation back.
         data['check-1-DELETE'] = ''
-        formset = CheckFormSet(data, prefix='check')
+        formset = checkformset(data, prefix='check')
         self.assertFalse(formset.is_valid())
 
         # Should be able to get deleted_forms from a valid formset even if a
@@ -562,11 +562,11 @@ class FormsFormsetTestCase(SimpleTestCase):
         class Person(Form):
             name = CharField()
 
-        PeopleForm = formset_factory(
+        peopleform = formset_factory(
             form=Person,
             can_delete=True)
 
-        p = PeopleForm(
+        p = peopleform(
             {'form-0-name': '', 'form-0-DELETE': 'on',  # no name!
              'form-TOTAL_FORMS': 1, 'form-INITIAL_FORMS': 1,
              'form-MIN_NUM_FORMS': 0, 'form-MAX_NUM_FORMS': 1})
@@ -584,10 +584,10 @@ class FormsFormsetTestCase(SimpleTestCase):
         # the form index used as a secondary ordering criteria. In order to put
         # something at the front of the list, you'd need to set it's order to 0.
 
-        ChoiceFormSet = formset_factory(Choice, can_order=True)
+        choiceformset = formset_factory(Choice, can_order=True)
 
         initial = [{'choice': 'Calexico', 'votes': 100}, {'choice': 'Fergie', 'votes': 900}]
-        formset = ChoiceFormSet(initial=initial, auto_id=False, prefix='choices')
+        formset = choiceformset(initial=initial, auto_id=False, prefix='choices')
         form_output = []
 
         for form in formset.forms:
@@ -658,8 +658,8 @@ class FormsFormsetTestCase(SimpleTestCase):
             'choices-3-ORDER': '',
         }
 
-        ChoiceFormSet = formset_factory(Choice, can_order=True)
-        formset = ChoiceFormSet(data, auto_id=False, prefix='choices')
+        choiceformset = formset_factory(Choice, can_order=True)
+        formset = choiceformset(data, auto_id=False, prefix='choices')
         self.assertTrue(formset.is_valid())
         form_output = []
 
@@ -683,8 +683,8 @@ class FormsFormsetTestCase(SimpleTestCase):
             'choices-MAX_NUM_FORMS': '0',  # max number of forms
         }
 
-        ChoiceFormSet = formset_factory(Choice, can_order=True)
-        formset = ChoiceFormSet(data, auto_id=False, prefix='choices')
+        choiceformset = formset_factory(Choice, can_order=True)
+        formset = choiceformset(data, auto_id=False, prefix='choices')
         self.assertTrue(formset.is_valid())
         form_output = []
 
@@ -697,14 +697,14 @@ class FormsFormsetTestCase(SimpleTestCase):
         # FormSets with ordering + deletion ###########################################
         # Let's try throwing ordering and deletion into the same form.
 
-        ChoiceFormSet = formset_factory(Choice, can_order=True, can_delete=True)
+        choiceformset = formset_factory(Choice, can_order=True, can_delete=True)
 
         initial = [
             {'choice': 'Calexico', 'votes': 100},
             {'choice': 'Fergie', 'votes': 900},
             {'choice': 'The Decemberists', 'votes': 500},
         ]
-        formset = ChoiceFormSet(initial=initial, auto_id=False, prefix='choices')
+        formset = choiceformset(initial=initial, auto_id=False, prefix='choices')
         form_output = []
 
         for form in formset.forms:
@@ -778,9 +778,9 @@ class FormsFormsetTestCase(SimpleTestCase):
         class Person(Form):
             name = CharField()
 
-        PeopleForm = formset_factory(form=Person, can_delete=True, can_order=True)
+        peopleform = formset_factory(form=Person, can_delete=True, can_order=True)
 
-        p = PeopleForm({
+        p = peopleform({
             'form-0-name': '',
             'form-0-DELETE': 'on',  # no name!
             'form-TOTAL_FORMS': 1,
@@ -839,8 +839,8 @@ class FormsFormsetTestCase(SimpleTestCase):
         # When not passed, max_num will take a high default value, leaving the
         # number of forms only controlled by the value of the extra parameter.
 
-        LimitedFavoriteDrinkFormSet = formset_factory(FavoriteDrinkForm, extra=3)
-        formset = LimitedFavoriteDrinkFormSet()
+        limitedfavoritedrinkformset = formset_factory(FavoriteDrinkForm, extra=3)
+        formset = limitedfavoritedrinkformset()
         form_output = []
 
         for form in formset.forms:
@@ -857,8 +857,8 @@ class FormsFormsetTestCase(SimpleTestCase):
         )
 
         # If max_num is 0 then no form is rendered at all.
-        LimitedFavoriteDrinkFormSet = formset_factory(FavoriteDrinkForm, extra=3, max_num=0)
-        formset = LimitedFavoriteDrinkFormSet()
+        limitedfavoritedrinkformset = formset_factory(FavoriteDrinkForm, extra=3, max_num=0)
+        formset = limitedfavoritedrinkformset()
         form_output = []
 
         for form in formset.forms:
@@ -866,8 +866,8 @@ class FormsFormsetTestCase(SimpleTestCase):
 
         self.assertEqual('\n'.join(form_output), "")
 
-        LimitedFavoriteDrinkFormSet = formset_factory(FavoriteDrinkForm, extra=5, max_num=2)
-        formset = LimitedFavoriteDrinkFormSet()
+        limitedfavoritedrinkformset = formset_factory(FavoriteDrinkForm, extra=5, max_num=2)
+        formset = limitedfavoritedrinkformset()
         form_output = []
 
         for form in formset.forms:
@@ -881,9 +881,16 @@ class FormsFormsetTestCase(SimpleTestCase):
 <td><input type="text" name="form-1-name" id="id_form-1-name" /></td></tr>"""
         )
 
+<<<<<<< HEAD
         # max_num has no effect when extra is less than max_num.
         LimitedFavoriteDrinkFormSet = formset_factory(FavoriteDrinkForm, extra=1, max_num=2)
         formset = LimitedFavoriteDrinkFormSet()
+=======
+        # Ensure that max_num has no effect when extra is less than max_num.
+
+        limitedfavoritedrinkformset = formset_factory(FavoriteDrinkForm, extra=1, max_num=2)
+        formset = limitedfavoritedrinkformset()
+>>>>>>> 5b864baf0cc06db43d00bc13dd018000537c8914
         form_output = []
 
         for form in formset.forms:
@@ -905,8 +912,8 @@ class FormsFormsetTestCase(SimpleTestCase):
         initial = [
             {'name': 'Fernet and Coke'},
         ]
-        LimitedFavoriteDrinkFormSet = formset_factory(FavoriteDrinkForm, extra=1)
-        formset = LimitedFavoriteDrinkFormSet(initial=initial)
+        limitedfavoritedrinkformset = formset_factory(FavoriteDrinkForm, extra=1)
+        formset = limitedfavoritedrinkformset(initial=initial)
         form_output = []
 
         for form in formset.forms:
@@ -925,8 +932,8 @@ class FormsFormsetTestCase(SimpleTestCase):
         # unless initial data is present. (This changed in the patch for bug
         # 20084 -- previously max_num=0 trumped initial data)
 
-        LimitedFavoriteDrinkFormSet = formset_factory(FavoriteDrinkForm, extra=1, max_num=0)
-        formset = LimitedFavoriteDrinkFormSet()
+        limitedfavoritedrinkformset = formset_factory(FavoriteDrinkForm, extra=1, max_num=0)
+        formset = limitedfavoritedrinkformset()
         form_output = []
 
         for form in formset.forms:
@@ -940,8 +947,8 @@ class FormsFormsetTestCase(SimpleTestCase):
             {'name': 'Fernet and Coke'},
             {'name': 'Bloody Mary'},
         ]
-        LimitedFavoriteDrinkFormSet = formset_factory(FavoriteDrinkForm, extra=1, max_num=0)
-        formset = LimitedFavoriteDrinkFormSet(initial=initial)
+        limitedfavoritedrinkformset = formset_factory(FavoriteDrinkForm, extra=1, max_num=0)
+        formset = limitedfavoritedrinkformset(initial=initial)
         form_output = []
 
         for form in formset.forms:
@@ -964,8 +971,8 @@ class FormsFormsetTestCase(SimpleTestCase):
             {'name': 'Bloody Mary'},
             {'name': 'Jack and Coke'},
         ]
-        LimitedFavoriteDrinkFormSet = formset_factory(FavoriteDrinkForm, extra=1, max_num=2)
-        formset = LimitedFavoriteDrinkFormSet(initial=initial)
+        limitedfavoritedrinkformset = formset_factory(FavoriteDrinkForm, extra=1, max_num=2)
+        formset = limitedfavoritedrinkformset(initial=initial)
         form_output = []
 
         for form in formset.forms:
@@ -985,8 +992,8 @@ class FormsFormsetTestCase(SimpleTestCase):
         initial = [
             {'name': 'Gin Tonic'},
         ]
-        LimitedFavoriteDrinkFormSet = formset_factory(FavoriteDrinkForm, extra=3, max_num=2)
-        formset = LimitedFavoriteDrinkFormSet(initial=initial)
+        limitedfavoritedrinkformset = formset_factory(FavoriteDrinkForm, extra=3, max_num=2)
+        formset = limitedfavoritedrinkformset(initial=initial)
         form_output = []
 
         for form in formset.forms:
@@ -1037,8 +1044,8 @@ class FormsFormsetTestCase(SimpleTestCase):
 
     def test_formset_iteration(self):
         # Regression tests for #16455 -- formset instances are iterable
-        ChoiceFormset = formset_factory(Choice, extra=3)
-        formset = ChoiceFormset()
+        choiceformset = formset_factory(Choice, extra=3)
+        formset = choiceformset()
 
         # confirm iterated formset yields formset.forms
         forms = list(formset)
@@ -1051,15 +1058,15 @@ class FormsFormsetTestCase(SimpleTestCase):
             formset[3]
 
         # Formsets can override the default iteration order
-        class BaseReverseFormSet(BaseFormSet):
+        class BaseReverseFormSet(FormSet):
             def __iter__(self):
                 return reversed(self.forms)
 
             def __getitem__(self, idx):
                 return super().__getitem__(len(self) - idx - 1)
 
-        ReverseChoiceFormset = formset_factory(Choice, BaseReverseFormSet, extra=3)
-        reverse_formset = ReverseChoiceFormset()
+        reversechoiceformset = formset_factory(Choice, BaseReverseFormSet, extra=3)
+        reverse_formset = reversechoiceformset()
 
         # confirm that __iter__ modifies rendering order
         # compare forms from "reverse" formset with forms from original formset
@@ -1072,8 +1079,8 @@ class FormsFormsetTestCase(SimpleTestCase):
         Formsets with no forms should still evaluate as true.
         Regression test for #15722
         """
-        ChoiceFormset = formset_factory(Choice, extra=0)
-        formset = ChoiceFormset()
+        choiceformset = formset_factory(Choice, extra=0)
+        formset = choiceformset()
         self.assertEqual(len(formset.forms), 0)
         self.assertTrue(formset)
 
@@ -1108,7 +1115,7 @@ class FormsFormsetTestCase(SimpleTestCase):
                 self.is_valid_called = True
                 return super().is_valid()
 
-        AnotherChoiceFormSet = formset_factory(AnotherChoice)
+        anotherchoiceformset = formset_factory(AnotherChoice)
         data = {
             'choices-TOTAL_FORMS': '1',  # number of forms rendered
             'choices-INITIAL_FORMS': '0',  # number of forms with initial data
@@ -1117,7 +1124,7 @@ class FormsFormsetTestCase(SimpleTestCase):
             'choices-0-choice': 'Calexico',
             'choices-0-votes': '100',
         }
-        formset = AnotherChoiceFormSet(data, auto_id=False, prefix='choices')
+        formset = anotherchoiceformset(data, auto_id=False, prefix='choices')
         self.assertTrue(formset.is_valid())
         self.assertTrue(all(form.is_valid_called for form in formset.forms))
 
@@ -1127,9 +1134,9 @@ class FormsFormsetTestCase(SimpleTestCase):
         _old_DEFAULT_MAX_NUM = formsets.DEFAULT_MAX_NUM
         try:
             formsets.DEFAULT_MAX_NUM = 2
-            ChoiceFormSet = formset_factory(Choice, max_num=1)
+            choiceformset = formset_factory(Choice, max_num=1)
             # someone fiddles with the mgmt form data...
-            formset = ChoiceFormSet(
+            formset = choiceformset(
                 {
                     'choices-TOTAL_FORMS': '4',
                     'choices-INITIAL_FORMS': '0',
@@ -1160,8 +1167,8 @@ class FormsFormsetTestCase(SimpleTestCase):
         try:
             formsets.DEFAULT_MAX_NUM = 3
             # for this form, we want a limit of 4
-            ChoiceFormSet = formset_factory(Choice, max_num=4)
-            formset = ChoiceFormSet(
+            choiceformset = formset_factory(Choice, max_num=4)
+            formset = choiceformset(
                 {
                     'choices-TOTAL_FORMS': '4',
                     'choices-INITIAL_FORMS': '0',
@@ -1187,12 +1194,12 @@ class FormsFormsetTestCase(SimpleTestCase):
         # Regression test for #11160
         # If non_form_errors() is called without calling is_valid() first,
         # it should ensure that full_clean() is called.
-        class BaseCustomFormSet(BaseFormSet):
+        class BaseCustomFormSet(FormSet):
             def clean(self):
                 raise ValidationError("This is a non-form error")
 
-        ChoiceFormSet = formset_factory(Choice, formset=BaseCustomFormSet)
-        formset = ChoiceFormSet(data, auto_id=False, prefix='choices')
+        choiceformset = formset_factory(Choice, formset=BaseCustomFormSet)
+        formset = choiceformset(data, auto_id=False, prefix='choices')
         self.assertIsInstance(formset.non_form_errors(), ErrorList)
         self.assertEqual(list(formset.non_form_errors()), ['This is a non-form error'])
 
@@ -1209,9 +1216,9 @@ class FormsFormsetTestCase(SimpleTestCase):
             'check-1-field': '50',
             'check-1-DELETE': 'on',
         }
-        CheckFormSet = formset_factory(CheckForm, max_num=1, validate_max=True,
+        checkformset = formset_factory(CheckForm, max_num=1, validate_max=True,
                                        can_delete=True)
-        formset = CheckFormSet(data, prefix='check')
+        formset = checkformset(data, prefix='check')
         self.assertTrue(formset.is_valid())
 
     def test_formset_total_error_count(self):
@@ -1239,12 +1246,12 @@ class FormsFormsetTestCase(SimpleTestCase):
             'choices-1-votes': '1',
         }
 
-        ChoiceFormSet = formset_factory(Choice, extra=1, max_num=1, validate_max=True)
-        formset = ChoiceFormSet(data, auto_id=False, prefix='choices')
+        choiceformset = formset_factory(Choice, extra=1, max_num=1, validate_max=True)
+        formset = choiceformset(data, auto_id=False, prefix='choices')
         self.assertEqual(formset.total_error_count(), 1)
 
         data['choices-1-votes'] = ''
-        formset = ChoiceFormSet(data, auto_id=False, prefix='choices')
+        formset = choiceformset(data, auto_id=False, prefix='choices')
         self.assertEqual(formset.total_error_count(), 2)
 
     def test_html_safe(self):
@@ -1367,13 +1374,19 @@ class TestIsBoundBehavior(SimpleTestCase):
 
 class TestEmptyFormSet(SimpleTestCase):
     def test_empty_formset_is_valid(self):
+<<<<<<< HEAD
         """An empty formset still calls clean()"""
         EmptyFsetWontValidateFormset = formset_factory(FavoriteDrinkForm, extra=0, formset=EmptyFsetWontValidate)
         formset = EmptyFsetWontValidateFormset(
+=======
+        """Test that an empty formset still calls clean()"""
+        emptyfsetwontvalidateformset = formset_factory(FavoriteDrinkForm, extra=0, formset=EmptyFsetWontValidate)
+        formset = emptyfsetwontvalidateformset(
+>>>>>>> 5b864baf0cc06db43d00bc13dd018000537c8914
             data={'form-INITIAL_FORMS': '0', 'form-TOTAL_FORMS': '0'},
             prefix="form",
         )
-        formset2 = EmptyFsetWontValidateFormset(
+        formset2 = emptyfsetwontvalidateformset(
             data={'form-INITIAL_FORMS': '0', 'form-TOTAL_FORMS': '1', 'form-0-name': 'bah'},
             prefix="form",
         )

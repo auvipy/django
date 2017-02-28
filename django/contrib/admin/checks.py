@@ -10,7 +10,7 @@ from django.core.exceptions import FieldDoesNotExist
 from django.db import models
 from django.db.models.constants import LOOKUP_SEP
 from django.forms.models import (
-    BaseModelForm, BaseModelFormSet, _get_foreign_key,
+    BaseModelForm, ModelFormSet, _get_foreign_key,
 )
 from django.template.engine import Engine
 
@@ -942,10 +942,10 @@ class InlineModelAdminChecks(BaseModelAdminChecks):
             return []
 
     def _check_formset(self, obj):
-        """ Check formset is a subclass of BaseModelFormSet. """
-
-        if not issubclass(obj.formset, BaseModelFormSet):
-            return must_inherit_from(parent='BaseModelFormSet', option='formset', obj=obj, id='admin.E206')
+        """ Check formset is a subclass of ModelFormSet. """
+        if not issubclass(obj.formset, ModelFormSet):
+            return must_inherit_from(parent='ModelFormSet', option='formset',
+                                     obj=obj, id='admin.E206')
         else:
             return []
 

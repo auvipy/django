@@ -11,7 +11,7 @@ from django.core.exceptions import (
 )
 from django.forms.fields import ChoiceField, Field
 from django.forms.forms import BaseForm, DeclarativeFieldsMetaclass
-from django.forms.formsets import BaseFormSet, formset_factory
+from django.forms.formsets import FormSet, formset_factory
 from django.forms.utils import ErrorList
 from django.forms.widgets import (
     HiddenInput, MultipleHiddenInput, SelectMultiple,
@@ -19,6 +19,8 @@ from django.forms.widgets import (
 from django.utils.encoding import force_text
 from django.utils.text import capfirst, get_text_list
 from django.utils.translation import gettext, gettext_lazy as _
+
+import warnings
 
 __all__ = (
     'ModelForm', 'BaseModelForm', 'model_to_dict', 'fields_for_model',
@@ -197,14 +199,8 @@ class ModelFormOptions:
 
 
 class ModelFormMetaclass(DeclarativeFieldsMetaclass):
-    def __new__(mcs, name, bases, attrs):
-        base_formfield_callback = None
-        for b in bases:
-            if hasattr(b, 'Meta') and hasattr(b.Meta, 'formfield_callback'):
-                base_formfield_callback = b.Meta.formfield_callback
-                break
-
-        formfield_callback = attrs.pop('formfield_callback', base_formfield_callback)
+    def __new__(cls, mcs, name, bases, attrs):
+        formfield_callback = attrs.pop('formfield_callback', None)
 
         new_class = super(ModelFormMetaclass, mcs).__new__(mcs, name, bases, attrs)
 
@@ -515,21 +511,30 @@ def modelform_factory(model, form=ModelForm, fields=None, exclude=None,
 
     # If parent form class already has an inner Meta, the Meta we're
     # creating needs to inherit from the parent's inner meta.
+<<<<<<< HEAD
     bases = (form.Meta,) if hasattr(form, 'Meta') else ()
     Meta = type('Meta', bases, attrs)
     if formfield_callback:
         Meta.formfield_callback = staticmethod(formfield_callback)
+=======
+    parent = (object,)
+    if hasattr(form, 'Meta'):
+        parent = (form.Meta, object)
+
+    meta = type(str('Meta'), parent, attrs)
+
+>>>>>>> 5b864baf0cc06db43d00bc13dd018000537c8914
     # Give this new form class a reasonable name.
     class_name = model.__name__ + 'Form'
 
     # Class attributes for the new form class.
     form_class_attrs = {
-        'Meta': Meta,
+        'meta': meta,
         'formfield_callback': formfield_callback
     }
 
-    if (getattr(Meta, 'fields', None) is None and
-            getattr(Meta, 'exclude', None) is None):
+    if (getattr(meta, 'fields', None) is None and
+            getattr(meta, 'exclude', None) is None):
         raise ImproperlyConfigured(
             "Calling modelform_factory without defining 'fields' or "
             "'exclude' explicitly is prohibited."
@@ -541,7 +546,7 @@ def modelform_factory(model, form=ModelForm, fields=None, exclude=None,
 
 # ModelFormSets ##############################################################
 
-class BaseModelFormSet(BaseFormSet):
+class ModelFormSet(FormSet):
     """
     A ``FormSet`` for editing a queryset and/or adding new objects to it.
     """
@@ -556,13 +561,25 @@ class BaseModelFormSet(BaseFormSet):
         self.initial_extra = initial
         defaults = {'data': data, 'files': files, 'auto_id': auto_id, 'prefix': prefix}
         defaults.update(kwargs)
+<<<<<<< HEAD
         super().__init__(**defaults)
+=======
+        super(ModelFormSet, self).__init__(**defaults)
+
+    @property
+    def model(self, cls):
+        return cls.form._meta.model
+>>>>>>> 5b864baf0cc06db43d00bc13dd018000537c8914
 
     def initial_form_count(self):
         """Return the number of forms that are required in this FormSet."""
         if not (self.data or self.files):
             return len(self.get_queryset())
+<<<<<<< HEAD
         return super().initial_form_count()
+=======
+        return super(ModelFormSet, self).initial_form_count()
+>>>>>>> 5b864baf0cc06db43d00bc13dd018000537c8914
 
     def _existing_object(self, pk):
         if not hasattr(self, '_object_dict'):
@@ -594,7 +611,11 @@ class BaseModelFormSet(BaseFormSet):
                 kwargs['initial'] = self.initial_extra[i - self.initial_form_count()]
             except IndexError:
                 pass
+<<<<<<< HEAD
         return super()._construct_form(i, **kwargs)
+=======
+        return super(ModelFormSet, self)._construct_form(i, **kwargs)
+>>>>>>> 5b864baf0cc06db43d00bc13dd018000537c8914
 
     def get_queryset(self):
         if not hasattr(self, '_queryset'):
@@ -820,11 +841,15 @@ class BaseModelFormSet(BaseFormSet):
             else:
                 widget = HiddenInput
             form.fields[self._pk_field.name] = ModelChoiceField(qs, initial=pk_value, required=False, widget=widget)
+<<<<<<< HEAD
         super().add_fields(form, index)
+=======
+        super(ModelFormSet, self).add_fields(form, index)
+>>>>>>> 5b864baf0cc06db43d00bc13dd018000537c8914
 
 
 def modelformset_factory(model, form=ModelForm, formfield_callback=None,
-                         formset=BaseModelFormSet, extra=1, can_delete=False,
+                         formset=ModelFormSet, extra=1, can_delete=False,
                          can_order=False, max_num=None, fields=None, exclude=None,
                          widgets=None, validate_max=False, localized_fields=None,
                          labels=None, help_texts=None, error_messages=None,
@@ -843,7 +868,7 @@ def modelformset_factory(model, form=ModelForm, formfield_callback=None,
                              widgets=widgets, localized_fields=localized_fields,
                              labels=labels, help_texts=help_texts,
                              error_messages=error_messages, field_classes=field_classes)
-    FormSet = formset_factory(form, formset, extra=extra, min_num=min_num, max_num=max_num,
+    formset = formset_factory(form, formset, extra=extra, min_num=min_num, max_num=max_num,
                               can_order=can_order, can_delete=can_delete,
                               validate_min=validate_min, validate_max=validate_max)
     FormSet.model = model
@@ -852,10 +877,53 @@ def modelformset_factory(model, form=ModelForm, formfield_callback=None,
 
 # InlineFormSets #############################################################
 
-class BaseInlineFormSet(BaseModelFormSet):
+class InlineFormSetMetaclass(type):
+
+    def __new__(cls, name, bases, attrs):
+        try:
+            parents = [b for b in bases if issubclass(b, InlineFormSet)]
+        except NameError:
+            # we are defining InlineFormSet ourselves
+            parents = None
+
+        new_class = super(InlineFormSetMetaclass, cls).__new__(cls, name,
+                            bases, attrs)
+        if not parents:
+            return new_class
+
+        # Find parent model
+        parent_model = attrs.get('parent_model', None)
+        fk_name = attrs.get('fk_name', None)
+        form = attrs.get('form', None)
+        for base in parents:
+            parent_model = parent_model or getattr(base, 'parent_model', None)
+            fk_name = fk_name or getattr(base, 'fk_name', None)
+            form = form or getattr(base, 'form', None)
+
+        # enforce a max_num=1 when the foreign key
+        # to the parent model is unique.
+        if form and parent_model:
+            new_class.fk = _get_foreign_key(parent_model,
+                form._meta.model, fk_name=fk_name)
+            if new_class.fk.unique:
+                new_class.max_num = 1
+
+        new_class.parent_model = parent_model
+        new_class.fk_name = fk_name
+        new_class.form = form
+
+        return new_class
+
+
+class InlineFormSet(ModelFormSet):
     """A formset for child objects related to a parent."""
+    __metaclass__ = InlineFormSetMetaclass
+
+    parent_model = None
+    fk_name = None
+
     def __init__(self, data=None, files=None, instance=None,
-                 save_as_new=False, prefix=None, queryset=None, **kwargs):
+                 save_as_new=False, prefix=None, queryset=None):
         if instance is None:
             self.instance = self.fk.remote_field.model()
         else:
@@ -867,6 +935,7 @@ class BaseInlineFormSet(BaseModelFormSet):
             qs = queryset.filter(**{self.fk.name: self.instance})
         else:
             qs = queryset.none()
+<<<<<<< HEAD
         self.unique_fields = {self.fk.name}
         super().__init__(data, files, prefix=prefix, queryset=qs, **kwargs)
 
@@ -876,14 +945,25 @@ class BaseInlineFormSet(BaseModelFormSet):
             if isinstance(self.form._meta.fields, tuple):
                 self.form._meta.fields = list(self.form._meta.fields)
             self.form._meta.fields.append(self.fk.name)
+=======
+
+        super(InlineFormSet, self).__init__(data, files, prefix=prefix, queryset=qs)
+>>>>>>> 5b864baf0cc06db43d00bc13dd018000537c8914
 
     def initial_form_count(self):
         if self.save_as_new:
             return 0
+<<<<<<< HEAD
         return super().initial_form_count()
 
     def _construct_form(self, i, **kwargs):
         form = super()._construct_form(i, **kwargs)
+=======
+        return super(InlineFormSet, self).initial_form_count()
+
+    def _construct_form(self, i, **kwargs):
+        form = super(InlineFormSet, self)._construct_form(i, **kwargs)
+>>>>>>> 5b864baf0cc06db43d00bc13dd018000537c8914
         if self.save_as_new:
             # Remove the primary key from the form's data, we are only
             # creating new instances
@@ -922,7 +1002,11 @@ class BaseInlineFormSet(BaseModelFormSet):
         return obj
 
     def add_fields(self, form, index):
+<<<<<<< HEAD
         super().add_fields(form, index)
+=======
+        super(InlineFormSet, self).add_fields(form, index)
+>>>>>>> 5b864baf0cc06db43d00bc13dd018000537c8914
         if self._pk_field == self.fk:
             name = self._pk_field.name
             kwargs = {'pk_field': True}
@@ -950,7 +1034,11 @@ class BaseInlineFormSet(BaseModelFormSet):
 
     def get_unique_error_message(self, unique_check):
         unique_check = [field for field in unique_check if field != self.fk.name]
+<<<<<<< HEAD
         return super().get_unique_error_message(unique_check)
+=======
+        return super(InlineFormSet, self).get_unique_error_message(unique_check)
+>>>>>>> 5b864baf0cc06db43d00bc13dd018000537c8914
 
 
 def _get_foreign_key(parent_model, model, fk_name=None, can_fail=False):
@@ -1009,7 +1097,7 @@ def _get_foreign_key(parent_model, model, fk_name=None, can_fail=False):
 
 
 def inlineformset_factory(parent_model, model, form=ModelForm,
-                          formset=BaseInlineFormSet, fk_name=None,
+                          formset=InlineFormSet, fk_name=None,
                           fields=None, exclude=None, extra=3, can_order=False,
                           can_delete=True, max_num=None, formfield_callback=None,
                           widgets=None, validate_max=False, localized_fields=None,
@@ -1045,12 +1133,24 @@ def inlineformset_factory(parent_model, model, form=ModelForm,
         'error_messages': error_messages,
         'field_classes': field_classes,
     }
-    FormSet = modelformset_factory(model, **kwargs)
+    formset = modelformset_factory(model, **kwargs)
     FormSet.fk = fk
     return FormSet
 
+# Deprecation ################################################################
+
+
+class BaseModelFormSet(ModelFormSet):
+    warnings.warn("BaseModelFormSet has been renamed to ModelFormSet.",
+        PendingDeprecationWarning)
+
+
+class BaseInlineFormSet(InlineFormSet):
+    warnings.warn("BaseInlineFormSet has been deprecated in favor of InlineFormSet.",
+        PendingDeprecationWarning)
 
 # Fields #####################################################################
+
 
 class InlineForeignKeyField(Field):
     """
